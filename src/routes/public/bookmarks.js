@@ -8,7 +8,7 @@ import { guidConstraints, filterConstraints } from "../../validators/bookmarks";
 import models from "../../models";
 
 const router = Router();
-const rp = promisify(request);
+const requestPr = promisify(request);
 
 router.get("/", async (req, res) => {
   console.log("!!!req.query!!!, ", req.query);
@@ -230,17 +230,9 @@ router.get("/:guid", async (req, res) => {
   try {
     const bookmark = await models.bookmarks.findOne({ where: { guid: req.params.guid } });
 
-    const WHOIS_URL = `http://htmlweb.ru/analiz/api.php?whois&url=${bookmark.link}&json`;
+    const { body, whois } = await getInfoByBookmarkLink(bookmark.link);
 
-    const [{ body }, { body: whois }] = await Promise.all([
-      rp(bookmark.link, { json: true }), //
-      rp(WHOIS_URL, { json: true })
-    ]);
-
-    const title = body.match(/<title>(.*?)<\/title>/i)[1] || "Title placeholder";
-
-    const imgRegexp = /<img\b(?=\s)(?=(?:[^>=]|='[^']*'|="[^"]*"|=[^'"][^\s>]*)*?\ssrc=['"]([^"]*)['"]?)(?:[^>=]|='[^']*'|="[^"]*"|=[^'"\s]*)*"\s?\/?>/;
-    const imgSrc = imgRegexp.exec(body)[1] || "https://via.placeholder.com/150";
+    const { title, imgSrc } = parseBody(body);
 
     const preview = {
       "og:type": "website",
@@ -261,3 +253,24 @@ router.get("/:guid", async (req, res) => {
 });
 
 export default router;
+
+async function getInfoByBookmarkLink(link) {
+  const WHOIS_URL = `http://htmlweb.ru/analiz/api.php?whois&url=${link}&json`;
+
+  // насколько такая конструкция читабельна? или так лучше не писать
+  const [{ body }, { body: whois }] = await Promise.all([
+    requestPr(link, { json: true }), //
+    requestPr(WHOIS_URL, { json: true })
+  ]);
+
+  return { body, whois };
+}
+
+function parseBody(body) {
+  const title = body.match(/<title>(.*?)<\/title>/i)[1] || "Title placeholder";
+
+  const imgRegexp = /<img\b(?=\s)(?=(?:[^>=]|='[^']*'|="[^"]*"|=[^'"][^\s>]*)*?\ssrc=['"]([^"]*)['"]?)(?:[^>=]|='[^']*'|="[^"]*"|=[^'"\s]*)*"\s?\/?>/;
+  const imgSrc = imgRegexp.exec(body)[1] || "https://via.placeholder.com/150";
+
+  return { title, imgSrc };
+}
