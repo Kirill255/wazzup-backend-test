@@ -4,7 +4,8 @@ import { Op } from "sequelize";
 import request from "request";
 import { promisify } from "util";
 
-import { guidConstraints, filterConstraints } from "../../validators/bookmarks";
+import { limitConstraints, offsetConstraints } from "../../validators/basic";
+import { guidConstraints, filterConstraints, sortByConstraints, sortDirConstraints } from "../../validators/bookmarks";
 import models from "../../models";
 
 const router = Router();
@@ -16,7 +17,11 @@ const requestPr = promisify(request);
  */
 router.get("/", async (req, res) => {
   const validationResult = validate(req.query, {
-    filter: filterConstraints
+    limit: limitConstraints,
+    offset: offsetConstraints,
+    filter: filterConstraints,
+    sort_by: sortByConstraints,
+    sort_dir: sortDirConstraints
   });
 
   if (validationResult) {

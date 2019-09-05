@@ -44,3 +44,17 @@ export const filterConstraints = {
     message: "^Only support 'createdAt' or 'favorites' values"
   }
 };
+
+export const sortByConstraints = {
+  inclusion: {
+    within: ["createdAt", "favorites"],
+    message: "^Only support 'createdAt' or 'favorites' values"
+  }
+};
+
+export const sortDirConstraints = {
+  inclusion: {
+    within: ["asc", "desc"],
+    message: "^Only support 'asc' or 'desc' values"
+  }
+};
