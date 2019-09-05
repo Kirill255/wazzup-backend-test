@@ -12,14 +12,17 @@ module.exports = (sequelize, DataTypes) => {
     },
     createdAt: {
       type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW
+      allowNull: false,
+      // defaultValue: DataTypes.NOW
     },
     updatedAt: {
       type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW
+      allowNull: false,
+      // defaultValue: DataTypes.NOW
     },
     description: {
-      type: DataTypes.TEXT("long"), // how to setup unlimited length?
+      // type: DataTypes.TEXT("long"), // how to setup unlimited length?
+      type: DataTypes.TEXT,
       allowNull: false,
     },
     favorites: {

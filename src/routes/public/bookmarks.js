@@ -2,37 +2,89 @@ import { Router } from "express";
 import validate from "validate.js";
 import { Op } from "sequelize";
 
-import { guidConstraints } from "../../validators/bookmarks";
+import { guidConstraints, filterConstraints } from "../../validators/bookmarks";
 import models from "../../models";
 
 const router = Router();
 
 router.get("/", async (req, res) => {
   console.log("!!!req.query!!!, ", req.query);
+
+  const validationResult = validate(req.query, {
+    filter: filterConstraints
+    // filter_value: filterConstraints
+  });
+
+  if (validationResult) {
+    res.status(400).json({ errors: validationResult });
+    return;
+  }
+
   const limit = req.query.limit || 50;
   const offset = req.query.offset || 0;
-  const filter = req.query.filter || null;
-  const filter_value = !!req.query.filter_value || null;
-  const filter_from = req.query.filter_from || "";
-  const filter_to = req.query.filter_to || "";
+  let filter = req.query.filter;
+  let filter_value = req.query.filter_value;
+  let filter_from = req.query.filter_from;
+  let filter_to = req.query.filter_to;
   const sort_by = req.query.sort_by || "createdAt";
   const sort_dir = req.query.sort_dir || "asc";
 
-  try {
-    let bookmarks;
-    if (filter && filter_value) {
-      bookmarks = await models.bookmarks.findAll({
-        where: {
-          [Op.or]: [{ [filter]: filter_value }, { [filter]: { [Op.between]: [filter_from, filter_to] } }]
-        },
-        limit,
-        offset,
-        order: [[sort_by, sort_dir]]
-      });
-    } else {
-      bookmarks = await models.bookmarks.findAll({});
-    }
+  console.log("11111filter_value, ", filter_value);
+  console.log("11111filter_value, ", typeof filter_value);
+  console.log("11111filter_from, ", typeof filter_from);
+  console.log("11111filter_to, ", typeof filter_to);
 
+  if (filter === "favorites") {
+    if (validate.isDefined(filter_value)) {
+      filter_value = filter_value === "true";
+    } else {
+      res.status(400).json({ errors: { backend: ["To filter by favorites, select a filter_value."] } });
+      return;
+    }
+  }
+
+  if (filter === "createdAt") {
+    if ((validate.isDefined(filter_value) && !validate.isEmpty(filter_value)) || (validate.isDefined(filter_from) && validate.isDefined(filter_to))) {
+      if (validate.isDefined(filter_value)) {
+        filter_value = new Date(filter_value);
+      }
+      if (validate.isDefined(filter_from)) {
+        filter_from = new Date(filter_from);
+      }
+      if (validate.isDefined(filter_to)) {
+        filter_to = new Date(filter_to);
+      }
+    } else {
+      res.status(400).json({ errors: { backend: ["To filter by createdAt, select a filter_value or filter_from and filter_to"] } });
+      return;
+    }
+  }
+
+  console.log("222222, ", filter_value);
+  console.log("222222, ", typeof filter_value);
+  console.log("222222, ", typeof filter_from);
+  console.log("222222, ", typeof filter_to);
+
+  const query = {
+    where: {},
+    limit,
+    offset,
+    order: [[sort_by, sort_dir]]
+  };
+
+  if (filter) {
+    query.where[filter] = {};
+    if (validate.isDefined(filter_value)) {
+      query.where[filter][Op.eq] = filter_value;
+    }
+    if (validate.isDefined(filter_from) && validate.isDefined(filter_to)) {
+      query.where[filter][Op.between] = [filter_from, filter_to];
+    }
+  }
+
+  try {
+    const bookmarks = await models.bookmarks.findAll(query);
+    console.log("!!!bookmarks!!! ", bookmarks);
     res.json({
       length: bookmarks.length,
       data: bookmarks
@@ -52,23 +104,27 @@ router.post("/", async (req, res) => {
     return;
   }
 
-  if (validate.isDefined(req.body.description) && validate.isString(req.body.description)) {
+  if (!validate.isDefined(req.body.description) || !validate.isString(req.body.description)) {
     res.status(400).json({ errors: { backend: ["Bookmark description must be of type string"] } });
     return;
   }
 
-  if (validate.isDefined(req.body.favorites) && validate.isBoolean(req.body.favorites)) {
+  if (!validate.isDefined(req.body.favorites) || !validate.isBoolean(req.body.favorites)) {
     res.status(400).json({ errors: { backend: ["Bookmark favorites must be of type boolean"] } });
     return;
   }
 
+  console.log(req.body.favorites);
+  console.log(validate.isDefined(req.body.favorites));
+  console.log(validate.isBoolean(req.body.favorites));
+  console.log(typeof req.body.favorites);
   try {
     const bookmark = await models.bookmarks.create({
       link: req.body.link,
       description: req.body.description,
       favorites: req.body.favorites,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      createdAt: Date.now(),
+      updatedAt: Date.now()
     });
 
     res.status(201).json({ data: { guid: bookmark.guid, createdAt: bookmark.createdAt } });
@@ -116,7 +172,7 @@ router.patch("/:guid", async (req, res) => {
   if (validate.isDefined(req.body.favorites)) {
     updatedValues.favorites = req.body.favorites;
   }
-  updatedValues.updatedAt = new Date(); // or Date.now() ?
+  updatedValues.updatedAt = Date.now(); // or Date.now() ?
 
   try {
     const updatedResult = await models.bookmarks.update(updatedValues, { where: { guid: req.params.guid } });

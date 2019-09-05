@@ -1,10 +1,8 @@
 import validate from "validate.js";
 
-const blockedDomains = ["yahoo.com", "socket.io"];
-
 const hostnameConstraints = {
   exclusion: {
-    within: blockedDomains
+    within: ["yahoo.com", "socket.io"]
   }
 };
 
@@ -36,6 +34,13 @@ export const guidConstraints = {
   format: {
     pattern: guidRegexp,
     flags: "i",
-    message: "is invalid parameter"
+    message: "^Invalid parameters" // // The ^ prevents the field name from being prepended to the error
+  }
+};
+
+export const filterConstraints = {
+  inclusion: {
+    within: ["createdAt", "favorites"],
+    message: "^Only support 'createdAt' or 'favorites' values"
   }
 };
