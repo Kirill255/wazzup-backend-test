@@ -1,11 +1,14 @@
 import { Router } from "express";
 import validate from "validate.js";
 import { Op } from "sequelize";
+import request from "request";
+import { promisify } from "util";
 
 import { guidConstraints, filterConstraints } from "../../validators/bookmarks";
 import models from "../../models";
 
 const router = Router();
+const rp = promisify(request);
 
 router.get("/", async (req, res) => {
   console.log("!!!req.query!!!, ", req.query);
@@ -190,6 +193,15 @@ router.patch("/:guid", async (req, res) => {
 });
 
 router.delete("/:guid", async (req, res) => {
+  const guidValidationResult = validate(req.params, {
+    guid: guidConstraints
+  });
+
+  if (guidValidationResult) {
+    res.status(400).json({ errors: guidValidationResult });
+    return;
+  }
+
   try {
     const deletedResult = await models.bookmarks.destroy({ where: { guid: req.params.guid } });
 
@@ -202,6 +214,45 @@ router.delete("/:guid", async (req, res) => {
     res.status(200).json("Delete was successful");
   } catch (error) {
     res.status(400).json({ errors: { backend: ["Can't delete bookmark", error] } });
+  }
+});
+
+router.get("/:guid", async (req, res) => {
+  const guidValidationResult = validate(req.params, {
+    guid: guidConstraints
+  });
+
+  if (guidValidationResult) {
+    res.status(400).json({ errors: guidValidationResult });
+    return;
+  }
+
+  try {
+    const bookmark = await models.bookmarks.findOne({ where: { guid: req.params.guid } });
+    const { body } = await rp(bookmark.link, { json: true });
+
+    const title = body.match(/<title>(.*?)<\/title>/i)[1] || "Title placeholder";
+    const imgRegexp = /<img\b(?=\s)(?=(?:[^>=]|='[^']*'|="[^"]*"|=[^'"][^\s>]*)*?\ssrc=['"]([^"]*)['"]?)(?:[^>=]|='[^']*'|="[^"]*"|=[^'"\s]*)*"\s?\/?>/;
+    const imgSrc = imgRegexp.exec(body)[1] || "https://via.placeholder.com/150";
+
+    const preview = {
+      "og:type": "website",
+      "og:title": title,
+      "og:image": imgSrc,
+      "og:description": bookmark.description
+    };
+
+    const WHOIS_URL = `http://htmlweb.ru/analiz/api.php?whois&url=${bookmark.link}&json`;
+    const { body: whois } = await rp(WHOIS_URL, { json: true });
+
+    res.json({
+      data: {
+        preview,
+        whois
+      }
+    });
+  } catch (error) {
+    res.status(400).json({ errors: { backend: ["Can't get bookmark info", error] } });
   }
 });
 
