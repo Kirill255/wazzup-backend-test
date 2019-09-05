@@ -10,12 +10,13 @@ import models from "../../models";
 const router = Router();
 const requestPr = promisify(request);
 
+/**
+ * @api {get} /api/v1/bookmarks
+ * @apiDescription Получение списка всех закладок или списка закладок с учётом фильтров
+ */
 router.get("/", async (req, res) => {
-  console.log("!!!req.query!!!, ", req.query);
-
   const validationResult = validate(req.query, {
     filter: filterConstraints
-    // filter_value: filterConstraints
   });
 
   if (validationResult) {
@@ -31,11 +32,6 @@ router.get("/", async (req, res) => {
   let filter_to = req.query.filter_to;
   const sort_by = req.query.sort_by || "createdAt";
   const sort_dir = req.query.sort_dir || "asc";
-
-  console.log("11111filter_value, ", filter_value);
-  console.log("11111filter_value, ", typeof filter_value);
-  console.log("11111filter_from, ", typeof filter_from);
-  console.log("11111filter_to, ", typeof filter_to);
 
   if (filter === "favorites") {
     if (validate.isDefined(filter_value)) {
@@ -63,11 +59,6 @@ router.get("/", async (req, res) => {
     }
   }
 
-  console.log("222222, ", filter_value);
-  console.log("222222, ", typeof filter_value);
-  console.log("222222, ", typeof filter_from);
-  console.log("222222, ", typeof filter_to);
-
   const query = {
     where: {},
     limit,
@@ -87,7 +78,7 @@ router.get("/", async (req, res) => {
 
   try {
     const bookmarks = await models.bookmarks.findAll(query);
-    console.log("!!!bookmarks!!! ", bookmarks);
+
     res.json({
       length: bookmarks.length,
       data: bookmarks
@@ -97,6 +88,10 @@ router.get("/", async (req, res) => {
   }
 });
 
+/**
+ * @api {post} /api/v1/bookmarks
+ * @apiDescription Создание закладки
+ */
 router.post("/", async (req, res) => {
   const validationResult = validate(req.body, {
     link: { urlConstraints: true }
@@ -117,10 +112,6 @@ router.post("/", async (req, res) => {
     return;
   }
 
-  console.log(req.body.favorites);
-  console.log(validate.isDefined(req.body.favorites));
-  console.log(validate.isBoolean(req.body.favorites));
-  console.log(typeof req.body.favorites);
   try {
     const bookmark = await models.bookmarks.create({
       link: req.body.link,
@@ -136,6 +127,10 @@ router.post("/", async (req, res) => {
   }
 });
 
+/**
+ * @api {patch} /api/v1/bookmarks/:guid
+ * @apiDescription Изменение закладки
+ */
 router.patch("/:guid", async (req, res) => {
   const guidValidationResult = validate(req.params, {
     guid: guidConstraints
@@ -175,12 +170,11 @@ router.patch("/:guid", async (req, res) => {
   if (validate.isDefined(req.body.favorites)) {
     updatedValues.favorites = req.body.favorites;
   }
-  updatedValues.updatedAt = Date.now(); // or Date.now() ?
+  updatedValues.updatedAt = Date.now();
 
   try {
     const updatedResult = await models.bookmarks.update(updatedValues, { where: { guid: req.params.guid } });
 
-    console.log("!!!updatedResult!!! ", updatedResult);
     if (updatedResult[0] === 0) {
       res.status(404).json({ errors: { backend: ["Bookmark with that ID doesn't exist"] } });
       return;
@@ -192,6 +186,10 @@ router.patch("/:guid", async (req, res) => {
   }
 });
 
+/**
+ * @api {delete} /api/v1/bookmarks/:guid
+ * @apiDescription Удаление закладки
+ */
 router.delete("/:guid", async (req, res) => {
   const guidValidationResult = validate(req.params, {
     guid: guidConstraints
@@ -205,7 +203,6 @@ router.delete("/:guid", async (req, res) => {
   try {
     const deletedResult = await models.bookmarks.destroy({ where: { guid: req.params.guid } });
 
-    console.log("!!!deletedResult!!! ", deletedResult);
     if (deletedResult === 0) {
       res.status(404).json({ errors: { backend: ["Bookmark with that ID doesn't exist"] } });
       return;
@@ -217,6 +214,10 @@ router.delete("/:guid", async (req, res) => {
   }
 });
 
+/**
+ * @api {get} /api/v1/bookmarks/:guid
+ * @apiDescription Получение информации о закладке
+ */
 router.get("/:guid", async (req, res) => {
   const guidValidationResult = validate(req.params, {
     guid: guidConstraints
@@ -257,7 +258,7 @@ export default router;
 async function getInfoByBookmarkLink(link) {
   const WHOIS_URL = `http://htmlweb.ru/analiz/api.php?whois&url=${link}&json`;
 
-  // насколько такая конструкция читабельна? или так лучше не писать
+  // насколько такая конструкция читабельна? или так лучше не писать?
   const [{ body }, { body: whois }] = await Promise.all([
     requestPr(link, { json: true }), //
     requestPr(WHOIS_URL, { json: true })

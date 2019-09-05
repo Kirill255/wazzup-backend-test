@@ -34,7 +34,7 @@ export const guidConstraints = {
   format: {
     pattern: guidRegexp,
     flags: "i",
-    message: "^Invalid parameters" // // The ^ prevents the field name from being prepended to the error
+    message: "^Invalid parameters"
   }
 };
 
