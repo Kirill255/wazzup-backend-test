@@ -229,9 +229,16 @@ router.get("/:guid", async (req, res) => {
 
   try {
     const bookmark = await models.bookmarks.findOne({ where: { guid: req.params.guid } });
-    const { body } = await rp(bookmark.link, { json: true });
+
+    const WHOIS_URL = `http://htmlweb.ru/analiz/api.php?whois&url=${bookmark.link}&json`;
+
+    const [{ body }, { body: whois }] = await Promise.all([
+      rp(bookmark.link, { json: true }), //
+      rp(WHOIS_URL, { json: true })
+    ]);
 
     const title = body.match(/<title>(.*?)<\/title>/i)[1] || "Title placeholder";
+
     const imgRegexp = /<img\b(?=\s)(?=(?:[^>=]|='[^']*'|="[^"]*"|=[^'"][^\s>]*)*?\ssrc=['"]([^"]*)['"]?)(?:[^>=]|='[^']*'|="[^"]*"|=[^'"\s]*)*"\s?\/?>/;
     const imgSrc = imgRegexp.exec(body)[1] || "https://via.placeholder.com/150";
 
@@ -241,9 +248,6 @@ router.get("/:guid", async (req, res) => {
       "og:image": imgSrc,
       "og:description": bookmark.description
     };
-
-    const WHOIS_URL = `http://htmlweb.ru/analiz/api.php?whois&url=${bookmark.link}&json`;
-    const { body: whois } = await rp(WHOIS_URL, { json: true });
 
     res.json({
       data: {
