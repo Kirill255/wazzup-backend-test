@@ -9,7 +9,7 @@ import { guidConstraints, filterConstraints, sortByConstraints, sortDirConstrain
 import models from "../../models";
 
 const router = Router();
-const requestPr = promisify(request);
+const requestPromisify = promisify(request);
 
 /**
  * @api {get} /api/v1/bookmarks
@@ -265,8 +265,8 @@ async function getInfoByBookmarkLink(link) {
 
   // насколько такая конструкция читабельна? или так лучше не писать?
   const [{ body }, { body: whois }] = await Promise.all([
-    requestPr(link, { json: true }), //
-    requestPr(WHOIS_URL, { json: true })
+    requestPromisify(link, { json: true }), //
+    requestPromisify(WHOIS_URL, { json: true })
   ]);
 
   return { body, whois };
