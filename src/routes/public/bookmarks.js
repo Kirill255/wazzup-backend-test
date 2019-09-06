@@ -82,11 +82,11 @@ router.get("/", async (req, res) => {
   }
 
   try {
-    const bookmarks = await models.bookmarks.findAll(query);
+    const bookmarks = await models.bookmarks.findAndCountAll(query);
 
     res.json({
-      length: bookmarks.length,
-      data: bookmarks
+      length: bookmarks.count,
+      data: bookmarks.rows
     });
   } catch (error) {
     res.status(400).json({ errors: { backend: ["Can't get list of bookmarks", error] } });
